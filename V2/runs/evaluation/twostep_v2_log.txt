@@ -1,0 +1,21 @@
+  Fall: 84 images
+  Sit: 97 images
+  Walk: 181 images
+
+=================================================================
+TASK 2 — TWO-STEP PIPELINE EVALUATION RESULTS
+=================================================================
+
+Overall Accuracy: 252/362 = 69.6%
+
+Stage breakdown: {'no_person': 32, 'pose': 320, 'no_pose': 10}
+No detection rate: 42/362 = 11.6%
+
+Class       Total  Correct      Acc     Prec      Rec       F1
+-----------------------------------------------------------------
+Fall           84       31    36.9%   0.7045   0.3690   0.4844
+Sit            97       76    78.4%   0.7379   0.7835   0.7600
+Walk          181      145    80.1%   0.8382   0.8011   0.8192
+
+Log saved -> V2\runs\evaluation\twostep_v2_test\prediction_log_twostep.csv
+Confusion matrix -> V2\runs\evaluation\twostep_v2_test\confusion_matrix_twostep.png

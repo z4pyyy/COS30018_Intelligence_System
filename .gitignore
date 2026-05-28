@@ -1,0 +1,8 @@
+datasets/*
+.venv/*
+/V3/runs/evaluation/*
+final_version/evaluation/*
+Video_Evaluation/*
+docs/*
+EvaluationBackTrack/*
+final_version/videos/*

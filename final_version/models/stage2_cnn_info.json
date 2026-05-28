@@ -1,0 +1,18 @@
+{
+  "class_names": [
+    "Fall",
+    "Sit",
+    "Walk"
+  ],
+  "class_to_idx": {
+    "Fall": 0,
+    "Sit": 1,
+    "Walk": 2
+  },
+  "img_size": 224,
+  "best_val_acc": 0.9803,
+  "architecture": "efficientnet_b0",
+  "best_val_acc_after_finetune": 0.9773,
+  "finetune_epochs": 8,
+  "finetune_lr": 0.0001
+}
