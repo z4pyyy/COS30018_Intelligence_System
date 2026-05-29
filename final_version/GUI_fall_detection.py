@@ -146,9 +146,9 @@ def run_mlp_on_image(img_bgr, mlp, scaler, pose_model, mlp_device):
     if mlp is None:
         return "NoDetection", 0.0, None
     try:
-        from mediapipe.tasks.python import vision as mp_vision
+        import mediapipe as mp
         rgb    = cv2.cvtColor(img_bgr, cv2.COLOR_BGR2RGB)
-        mp_img = mp_vision.Image(image_format=mp_vision.ImageFormat.SRGB, data=rgb)
+        mp_img = mp.Image(image_format=mp.ImageFormat.SRGB, data=rgb)
         result = pose_model.detect(mp_img)
         if not result.pose_landmarks:
             return "NoDetection", 0.0, None
@@ -173,7 +173,8 @@ def run_mlp_on_image(img_bgr, mlp, scaler, pose_model, mlp_device):
             probs  = torch.softmax(mlp(tensor), dim=1)[0]
             idx    = int(probs.argmax())
             return CLASS_NAMES[idx], float(probs[idx]), landmarks_out
-    except Exception:
+    except Exception as e:
+        print(f"[MLP] inference error: {e}")
         return "NoDetection", 0.0, None
 
 # =============================================================================
@@ -374,6 +375,8 @@ class FallDetectionGUI(QMainWindow):
         self._alert_active = False
         self._fall_count   = 0
         self._flash_state  = False
+        self._consecutive_fall = 0
+        self._CONFIRM_THRESH = 10
         self._setup_ui()
         self._inference = InferenceThread()
         self._inference.frame_ready.connect(self._on_frame)
@@ -525,14 +528,23 @@ class FallDetectionGUI(QMainWindow):
                             0.6, (255,255,255), 2, cv2.LINE_AA)
 
         if is_fall:
-            badge = "  ⚠ FALL DETECTED  "
+            self._consecutive_fall += 1
+            confirmed = self._consecutive_fall >= self._CONFIRM_THRESH
+
+            if confirmed:
+                badge = "  ⚠ FALL DETECTED  "
+                badge_color = (0, 40, 200)
+            else:
+                badge = f"  ⚠ POSSIBLE FALL ({self._consecutive_fall}/{self._CONFIRM_THRESH})  "
+                badge_color = (0, 140, 255)
+
             (bw,bh),_ = cv2.getTextSize(badge, cv2.FONT_HERSHEY_DUPLEX, 0.9, 2)
             bx = (annotated.shape[1] - bw) // 2
-            cv2.rectangle(annotated, (bx-6,8), (bx+bw+6,bh+30), (0,40,200), -1)
+            cv2.rectangle(annotated, (bx-6,8), (bx+bw+6,bh+30), badge_color, -1)
             cv2.putText(annotated, badge, (bx,bh+20), cv2.FONT_HERSHEY_DUPLEX,
                         0.9, (255,255,255), 2, cv2.LINE_AA)
 
-            if (now - self._last_fall_t) > ALERT_HOLD_SEC:
+            if confirmed and (now - self._last_fall_t) > ALERT_HOLD_SEC:
                 self._fall_count += 1
                 self._last_fall_t  = now
                 self.fall_count_label.setText(f"Falls detected: {self._fall_count}")
@@ -540,6 +552,8 @@ class FallDetectionGUI(QMainWindow):
                     threading.Thread(target=playsound, args=(str(ALERT_SOUND),), daemon=True).start()
                 self._alert_active = True
                 self._flash_timer.start(300)
+        else:
+            self._consecutive_fall = 0
 
         if self._alert_active and (now - self._last_fall_t) > ALERT_HOLD_SEC:
             self._alert_active = False
@@ -565,11 +579,16 @@ class FallDetectionGUI(QMainWindow):
 
     def _flash_tick(self):
         self._flash_state = not self._flash_state
+        confirmed = self._consecutive_fall >= self._CONFIRM_THRESH
+        if confirmed:
+            label_text = "⚠  FALL DETECTED"
+        else:
+            label_text = "⚠  POSSIBLE FALL"
         if self._flash_state:
-            self.alert_label.setText("⚠  FALL DETECTED")
+            self.alert_label.setText(label_text)
             self.alert_label.setStyleSheet("color: #C0392B; font-weight: bold;")
         else:
-            self.alert_label.setText("⚠  FALL DETECTED")
+            self.alert_label.setText(label_text)
             self.alert_label.setStyleSheet("color: #E74C3C;")
 
     def closeEvent(self, event):
